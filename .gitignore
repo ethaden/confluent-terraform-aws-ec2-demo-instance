@@ -1,0 +1,9 @@
+*.key
+api-key.txt
+.terraform*
+*.tfstate
+*.backup
+generated
+*.pem
+modules
+aws-remote-tfstate-s3.tf
