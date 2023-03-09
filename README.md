@@ -1,6 +1,8 @@
 # Powerful Demo Instance using a common VPC
 This terraform configuration sets up an AWS instance for demo purposes using a common VPC imported from an Terraform S3 remote state.
 
+CAUTION: Everything contained in this repository is not supported by Confluent.
+
 Note, that additional measures (e.g. locking) might be required if this state store is accessed concurrently by multiple users.
 
 You can find a configuration to set up the Terraform S3 remote state bucket here: https://github.com/ethaden/confluent-terraform-aws-tfstate-s3.
