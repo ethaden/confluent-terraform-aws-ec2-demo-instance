@@ -7,12 +7,14 @@ resource "aws_security_group" "sg_dualstack_demo_instance" {
   vpc_id      = data.terraform_remote_state.common_vpc.outputs.vpc_dualstack.id
 
   # Generate dualstack ingress for for the following tcp ports: 22 (ssh), 80 (http), 443 (https)
+  # Alternatively, only for port 22
   dynamic "ingress" {
-    for_each = { 1 : 22, 2 : 80, 3 : 443 }
+    #for_each = { 1 : 22, 2 : 80, 3 : 443 }
+    for_each = { 1 : 22 }
     content {
       protocol         = "tcp"
-      cidr_blocks      = [data.terraform_remote_state.common_vpc.outputs.vpc_dualstack.cidr_block]
-      ipv6_cidr_blocks = [data.terraform_remote_state.common_vpc.outputs.vpc_dualstack.ipv6_cidr_block]
+      cidr_blocks      = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = ["::/0"]
       from_port        = ingress.value
       to_port          = ingress.value
     }
@@ -71,9 +73,9 @@ resource "aws_instance" "ec2_instance" {
   key_name          = data.terraform_remote_state.common_vpc.outputs.ssh_key_default.key_name
   hibernation       = true
 
-  # vpc_security_group_ids = [
-  #   aws_security_group.sg_dualstack_demo_instance.id
-  # ]
+  vpc_security_group_ids = [
+    aws_security_group.sg_dualstack_demo_instance.id
+  ]
   root_block_device {
     delete_on_termination = true
     volume_size           = 150
