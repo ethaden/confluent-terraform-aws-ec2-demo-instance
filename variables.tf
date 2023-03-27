@@ -75,6 +75,22 @@ variable "instance_type" {
   description = "Type of the EC2 instance"
 }
 
+variable "aws_ami_search" {
+  type = map
+  default = {
+    # Ubuntu
+    owner = "099720109477"
+    # Ubuntu 22.04
+    search = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  }
+  description = "The AMI owner and search string to be used for autoconfiguring the AMI. Once instanciated, fix the AMI ID using aws_ami_id to avoid recreation of your VM!"
+}
+variable "aws_ami_id" {
+  type = string
+  default = ""
+  description = "AMI to be used for this instance. Leave empty for autoconfiguration. Once found, fix value to avoid recreation of your VM!"
+}
+
 # variable "owner_email" {
 #     type = string
 #     default = var.env.OWNER

@@ -46,12 +46,12 @@ resource "aws_security_group" "sg_dualstack_demo_instance" {
 }
 
 # Lookup AMI
-data "aws_ami" "ubuntu" {
+data "aws_ami" "autoconfigured_ami" {
   most_recent = true
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = [var.aws_ami_search.search]
   }
 
   filter {
@@ -59,11 +59,11 @@ data "aws_ami" "ubuntu" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical
+  owners = [var.aws_ami_search.owner] # Canonical
 }
 
 resource "aws_instance" "ec2_instance" {
-  ami           = data.aws_ami.ubuntu.id
+  ami           = var.aws_ami_id!="" ? var.aws_ami_id : data.aws_ami.autoconfigured_ami.id
   instance_type = var.instance_type
   # Use subnet from common vpc, availability zone a1
   subnet_id                   = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1a.id
@@ -99,7 +99,7 @@ resource "aws_cloudwatch_metric_alarm" "alarm_instance_idle_shutdown" {
   namespace           = "AWS/EC2"
   period              = "300"
   statistic           = "Average"
-  threshold           = "0.1"
+  threshold           = "0.5"
   alarm_description = "Stop the EC2 instance when CPU utilization stays below 10% on average for 12 periods of 5 minutes, i.e. 1 hour"
   actions_enabled           = true
   alarm_actions             = ["arn:aws:automate:${var.aws_region}:ec2:stop"]
