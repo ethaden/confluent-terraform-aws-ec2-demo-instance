@@ -1,5 +1,41 @@
 
 # Recommendation: Overwrite the default in tfvars or stick with the automatic default
+variable "instance_name" {
+  type = string
+  description = "The name of the instance and all related resources such as security groups"
+}
+
+variable "instance_initial_apt_packages" {
+  type = string
+  default = ""
+  description = "Space separated list of Ubuntu APT packages to install during initialization of the instance"
+}
+
+variable "instance_initial_snap_packages" {
+  type = string
+  default = ""
+  description = "Space separated list of Ubuntu SNAP packages to install during initialization of the instance"
+}
+
+
+variable "instance_initial_classic_snap_packages" {
+  type = string
+  default = ""
+  description = "Space separated list of Ubuntu classic SNAP packages to install during initialization of the instance (with snap install --classic)"
+}
+
+variable "dns_suffix" {
+  type = string
+  default = ""
+  description = "If specified together with the public_dns_zone_id, a dns AAAA record will be created pointing to this machine with format $\\{var.instance_name\\}.$\\{locals.owner\\}.$\\{var.dns_suffix\\}"
+}
+
+variable "dns_zone_id" {
+  type = string
+  default = ""
+  description = "The ID of the Route53 Zone to be used for creating the public AAAA record"
+}
+
 variable "tf_last_updated" {
     type = string
     default = ""
@@ -90,8 +126,3 @@ variable "aws_ami_id" {
   default = ""
   description = "AMI to be used for this instance. Leave empty for autoconfiguration. Once found, fix value to avoid recreation of your VM!"
 }
-
-# variable "owner_email" {
-#     type = string
-#     default = var.env.OWNER
-# }

@@ -1,8 +1,8 @@
 # Note: VPC and related resources are imported from the remote S3 terraform store
 
 # Import existing: terraform import aws_security_group.sg_dualstack <AWS Resource ID>
-resource "aws_security_group" "sg_dualstack_demo_instance" {
-  name        = "${local.resource_prefix}-demo"
+resource "aws_security_group" "sg_ec2_instance" {
+  name        = "${local.resource_prefix}-${var.instance_name}"
   description = "Allow only SSH"
   vpc_id      = data.terraform_remote_state.common_vpc.outputs.vpc_dualstack.id
 
@@ -66,15 +66,15 @@ resource "aws_instance" "ec2_instance" {
   ami           = var.aws_ami_id!="" ? var.aws_ami_id : data.aws_ami.autoconfigured_ami.id
   instance_type = var.instance_type
   # Use subnet from common vpc, availability zone a1
-  subnet_id                   = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1a.id
+  subnet_id                   = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1b.id
   associate_public_ip_address = true
   # Use availability zone of the chosen subnets
-  availability_zone = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1a.availability_zone
+  availability_zone = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1b.availability_zone
   key_name          = data.terraform_remote_state.common_vpc.outputs.ssh_key_default.key_name
   hibernation       = true
 
   vpc_security_group_ids = [
-    aws_security_group.sg_dualstack_demo_instance.id
+    aws_security_group.sg_ec2_instance.id
   ]
   root_block_device {
     delete_on_termination = true
@@ -83,8 +83,23 @@ resource "aws_instance" "ec2_instance" {
     tags                  = local.confluent_tags
     encrypted             = true
   }
+
+  user_data = <<-EOF
+    #!/bin/bash
+    sudo apt-get upgrade && sudo apt-get dist-upgrade -y
+    snap refresh
+    if [ \! -z "${var.instance_initial_apt_packages}" ]; then 
+      apt-get install -y ${var.instance_initial_apt_packages}
+    fi
+    if [ \! -z "${var.instance_initial_snap_packages}" ]; then
+      snap install ${var.instance_initial_snap_packages}
+    fi
+    if [ \! -z "${var.instance_initial_classic_snap_packages}" ]; then
+      snap install --classic ${var.instance_initial_snap_packages}
+    fi
+  EOF
   tags = {
-    Name = "${local.resource_prefix}-demo"
+    Name = "${local.resource_prefix}-${var.instance_name}"
   }
 
   # depends_on = [ aws_security_group.project-iac-sg ]
@@ -113,12 +128,20 @@ resource "aws_cloudwatch_metric_alarm" "alarm_instance_idle_shutdown" {
 
 resource "aws_route53_record" "ec2_instance_dns_cname" {
   zone_id = data.terraform_remote_state.common_vpc.outputs.private_hostedzone_vpc.zone_id
-  name    = "${local.resource_prefix}-demo.${data.terraform_remote_state.common_vpc.outputs.private_hostedzone_vpc.name}"
+  name    = "${local.resource_prefix}-${var.instance_name}.${data.terraform_remote_state.common_vpc.outputs.private_hostedzone_vpc.name}"
   type    = "CNAME"
   ttl     = 300
   records = [aws_instance.ec2_instance.private_dns]
 }
-
+resource "aws_route53_record" "ec2_instance_public_dns_cname" {
+  # Only use this if all required data has been provided by the user
+  count = (var.dns_suffix!="" && var.dns_zone_id!="") ? 1 : 0
+  zone_id = var.dns_zone_id
+  name    = "${var.instance_name}.${local.confluent_tags.owner}.${var.dns_suffix}"
+  type    = "AAAA"
+  ttl     = 300
+  records = [aws_instance.ec2_instance.ipv6_addresses[0]]
+}
 
 # output "common_vpc" {
 #   value = data.terraform_remote_state.outputs.common_vpc
