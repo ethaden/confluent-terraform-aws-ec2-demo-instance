@@ -7,7 +7,7 @@ variable "instance_name" {
 
 variable "instance_initial_apt_packages" {
   type = string
-  default = ""
+  default = "apt-file tree vim kafkacat confluent-kafka confluent-schema-registry"
   description = "Space separated list of Ubuntu APT packages to install during initialization of the instance"
 }
 

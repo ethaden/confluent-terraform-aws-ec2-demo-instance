@@ -62,6 +62,52 @@ data "aws_ami" "autoconfigured_ami" {
   owners = [var.aws_ami_search.owner] # Canonical
 }
 
+data "cloudinit_config" "ec2_instance_init" {
+  gzip          = false
+  base64_encode = false
+  part {
+    #filename     = "cloud-config.yaml"
+    content_type = "text/cloud-config"
+    content  = <<-EOF
+        #cloud-config
+        # See documentation for more configuration examples
+        # https://cloudinit.readthedocs.io/en/latest/reference/examples.html 
+
+        # Install arbitrary packages
+        # https://cloudinit.readthedocs.io/en/latest/reference/examples.html#install-arbitrary-packages
+        apt:
+            preserve_sources_list: true
+            sources:
+                confluent-clients:
+                    source: "deb https://packages.confluent.io/clients/deb focal main"
+                    # Confluent key ID extraced by running wget -qO - https://packages.confluent.io/deb/7.4/archive.key | gpg --with-fingerprint --with-colons | awk -F: '/^fpr/ { print $10 }'
+                    keyid: CBBB821E8FAF364F79835C438B1DA6120C2BF624
+                    # Install by adding "confluent-kafka" or "confluent-server" to list of apt packages
+                confluent-platform-7-4:
+                    source: "deb [arch=amd64] https://packages.confluent.io/deb/7.4 stable main"
+                    # Confluent key ID extraced by running wget -qO - https://packages.confluent.io/deb/7.4/archive.key | gpg --with-fingerprint --with-colons | awk -F: '/^fpr/ { print $10 }'
+                    keyid: CBBB821E8FAF364F79835C438B1DA6120C2BF624
+                    # Install by adding "confluent-platform" to list of apt packages
+        package_update: true
+        package_upgrade: true
+        packages: ${local.apt_package_list}
+        #write_files:
+        #- path: <filename>
+        #  content: |
+        #        <file content>
+        #        <file content2>
+        # Run commands on first boot
+        # https://cloudinit.readthedocs.io/en/latest/reference/examples.html#run-commands-on-first-boot
+        runcmd:
+        - sudo snap refresh
+        - sudo apt-file update
+        - if [ \! -z "${var.instance_initial_snap_packages}" ]; then sudo snap install ${var.instance_initial_snap_packages}; fi
+        - if [ \! -z "${var.instance_initial_classic_snap_packages}" ]; then sudo snap install --classic ${var.instance_initial_snap_packages}; fi
+    EOF
+  }
+}
+
+
 resource "aws_instance" "ec2_instance" {
   ami           = var.aws_ami_id!="" ? var.aws_ami_id : data.aws_ami.autoconfigured_ami.id
   instance_type = var.instance_type
@@ -84,7 +130,8 @@ resource "aws_instance" "ec2_instance" {
     encrypted             = true
   }
 
-  user_data = <<-EOF
+  user_data = data.cloudinit_config.ec2_instance_init.rendered
+  /* user_data = <<-EOF
     #!/bin/bash
     sudo apt-get upgrade && sudo apt-get dist-upgrade -y
     snap refresh
@@ -97,7 +144,7 @@ resource "aws_instance" "ec2_instance" {
     if [ \! -z "${var.instance_initial_classic_snap_packages}" ]; then
       snap install --classic ${var.instance_initial_snap_packages}
     fi
-  EOF
+  EOF */
   tags = {
     Name = "${local.resource_prefix}-${var.instance_name}"
   }

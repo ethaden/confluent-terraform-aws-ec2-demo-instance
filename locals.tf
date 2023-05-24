@@ -29,6 +29,11 @@ locals {
 
   username        = var.username != "" ? var.username : data.external.env.result["user"]
   resource_prefix = var.resource_prefix != "" ? var.resource_prefix : local.username
+  apt_package_list = split(" ", var.instance_initial_apt_packages)
+}
+
+output "apt-package-list" {
+    value = local.apt_package_list
 }
 
 output "confluent_tags" {
