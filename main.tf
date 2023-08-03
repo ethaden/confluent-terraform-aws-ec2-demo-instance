@@ -90,7 +90,7 @@ data "cloudinit_config" "ec2_instance_init" {
                     # Install by adding "confluent-platform" to list of apt packages
         package_update: true
         package_upgrade: true
-        packages: ${local.apt_package_list}
+        packages: ${join(", ", local.apt_package_list)}
         #write_files:
         #- path: <filename>
         #  content: |
@@ -113,7 +113,7 @@ resource "aws_instance" "ec2_instance" {
   instance_type = var.instance_type
   # Use subnet from common vpc, availability zone a1
   subnet_id                   = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1b.id
-  associate_public_ip_address = true
+  associate_public_ip_address = false
   # Use availability zone of the chosen subnets
   availability_zone = data.terraform_remote_state.common_vpc.outputs.subnet_dualstack_1b.availability_zone
   key_name          = data.terraform_remote_state.common_vpc.outputs.ssh_key_default.key_name
@@ -161,7 +161,7 @@ resource "aws_cloudwatch_metric_alarm" "alarm_instance_idle_shutdown" {
   namespace           = "AWS/EC2"
   period              = "300"
   statistic           = "Average"
-  threshold           = "0.5"
+  threshold           = "0.3"
   alarm_description = "Stop the EC2 instance when CPU utilization stays below 10% on average for 12 periods of 5 minutes, i.e. 1 hour"
   actions_enabled           = true
   alarm_actions             = ["arn:aws:automate:${var.aws_region}:ec2:stop"]
